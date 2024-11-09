@@ -246,6 +246,13 @@
     box-shadow: 0 0 0 6px rgba(255, 150, 150, 0.4);
 }
 
+.marker-cluster div {
+    font-weight: 400;
+    font-size: 16px;
+    color: white;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7); /* Adds a shadow for better readability */
+}
+
 .marker-inner {
     width: 100%;  /* Adjust this to make inner circle smaller/larger */
     height: 100%;  /* Adjust this to make inner circle smaller/larger */
@@ -282,10 +289,16 @@
     box-shadow: 0 0 0 6px rgba(255, 50, 50, 0.4);
 }
 
-.marker-cluster:hover {
-    transform: scale(1.1);
-    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+.marker-cluster:hover .marker-outer {
+    animation: burst 0.4s ease-in-out;
 }
+
+@keyframes burst {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.2); opacity: 0.8; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
     </style>
 </head>
 <body>
