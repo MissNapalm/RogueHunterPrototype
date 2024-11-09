@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>RogueHunter Crime Trends</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+    <style>
+        body, html { height: 100%; margin: 0; padding: 0; font-family: Arial, sans-serif; background: #f8f9fa; }
+        .container { display: flex; height: 100vh; padding-top: 80px; }
+        .controls { width: 300px; padding: 24px; background: white; }
+        .charts-container { flex: 1; padding: 24px; overflow-y: auto; }
+        .chart-section { margin-bottom: 24px; border: 1px solid #ccc; padding: 16px; background: white; border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="controls">
+            <h3>Crime Types</h3>
+            <div id="crimeFilters">
+                {% for crime_type in crime_types %}
+                <label><input type="checkbox" value="{{ crime_type }}" class="crime-filter"> {{ crime_type }}</label><br>
+                {% endfor %}
+            </div>
+            <button id="analyze-button">Analyze Selected Crimes</button>
+        </div>
+        <div class="charts-container">
+            <div class="chart-section"><h3>Arrest Rates</h3><canvas id="arrestChart"></canvas></div>
+            <div class="chart-section"><h3>Monthly Trends</h3><canvas id="monthlyChart"></canvas></div>
+            <div class="chart-section"><h3>Yearly Trends</h3><canvas id="yearlyChart"></canvas></div>
+            <div class="chart-section"><h3>Hourly Distribution</h3><canvas id="distributionChart"></canvas></div>
+        </div>
+    </div>
+
+    <script>
+        let arrestChart, monthlyChart, yearlyChart, distributionChart;
+
+        function initializeCharts() {
+            const ctx1 = document.getElementById('arrestChart').getContext('2d');
+            arrestChart = new Chart(ctx1, {
+                type: 'bar',
+                data: { labels: [], datasets: [{ label: 'Arrests', backgroundColor: '#ff6384', data: [] }, { label: 'No Arrests', backgroundColor: '#36a2eb', data: [] }] },
+                options: { responsive: true, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } } }
+            });
+
+            const ctx2 = document.getElementById('monthlyChart').getContext('2d');
+            monthlyChart = new Chart(ctx2, {
+                type: 'line',
+                data: { labels: [], datasets: [{ label: 'Monthly Count', backgroundColor: '#ffce56', borderColor: '#ffce56', fill: false, data: [] }] },
+                options: { responsive: true }
+            });
+
+            const ctx3 = document.getElementById('yearlyChart').getContext('2d');
+            yearlyChart = new Chart(ctx3, {
+                type: 'bar',
+                data: { labels: [], datasets: [{ label: 'Yearly Count', backgroundColor: '#4bc0c0', data: [] }] },
+                options: { responsive: true }
+            });
+
+            const ctx4 = document.getElementById('distributionChart').getContext('2d');
+            distributionChart = new Chart(ctx4, {
+                type: 'bar',
+                data: { labels: [], datasets: [{ label: 'Hourly Distribution', backgroundColor: '#9966ff', data: [] }] },
+                options: { responsive: true }
+            });
+        }
+
+        async function updateCharts(selectedCrimes) {
+            const url = new URL('/api/getTrendData', window.location.origin);
+            selectedCrimes.forEach(crime => url.searchParams.append('types[]', crime));
+
+            const response = await fetch(url);
+            const data = await response.json();
+
+            // Arrest Chart
+            arrestChart.data.labels = selectedCrimes;
+            arrestChart.data.datasets[0].data = selectedCrimes.map(type => data.arrests[type].arrests);
+            arrestChart.data.datasets[1].data = selectedCrimes.map(type => data.arrests[type].no_arrests);
+            arrestChart.update();
+
+            // Monthly Chart for the first selected crime type
+            const firstCrimeType = selectedCrimes[0];
+            monthlyChart.data.labels = data.monthly[firstCrimeType].map(d => d[0]);
+            monthlyChart.data.datasets[0].data = data.monthly[firstCrimeType].map(d => d[1]);
+            monthlyChart.update();
+
+            // Yearly Chart for the first selected crime type
+            yearlyChart.data.labels = data.yearly[firstCrimeType].map(d => "20" + d[0]);
+            yearlyChart.data.datasets[0].data = data.yearly[firstCrimeType].map(d => d[1]);
+            yearlyChart.update();
+
+            // Hourly Distribution for the first selected crime type
+            distributionChart.data.labels = data.distribution[firstCrimeType].map(d => `${d[0]}:00`);
+            distributionChart.data.datasets[0].data = data.distribution[firstCrimeType].map(d => d[1]);
+            distributionChart.update();
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeCharts();
+
+            document.getElementById('analyze-button').addEventListener('click', function() {
+                const selectedCrimes = Array.from(document.querySelectorAll('.crime-filter:checked')).map(c => c.value);
+                if (selectedCrimes.length === 0) {
+                    alert('Please select at least one crime type.');
+                    return;
+                }
+                updateCharts(selectedCrimes);
+            });
+        });
+    </script>
+</body>
+</html>
