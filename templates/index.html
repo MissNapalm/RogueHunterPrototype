@@ -1,0 +1,495 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>RogueHunter Crime Map</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.css" />
+    <style>
+        body, html { 
+            height: 100%; 
+            margin: 0; 
+            padding: 0;
+            font-family: system-ui, -apple-system, sans-serif;
+            background: #f8f9fa;
+        }
+
+        /* Navigation Bar */
+        .navbar {
+            background-color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 1rem 2rem;
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 1000;
+            box-sizing: border-box;
+        }
+
+        .nav-container {
+            margin: 0;
+            display: flex;
+            align-items: center;
+            white-space: nowrap;
+        }
+
+        .nav-logo {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #cc0000;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-right: 48px;
+        }
+
+        .logo-image {
+            height: 50px;
+            width: auto;
+            object-fit: contain;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 1.5rem;
+            margin-left: 0;
+            align-items: center;
+        }
+
+        .nav-link {
+            color: #4a5568;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .nav-link:hover {
+            color: #cc0000;
+            background-color: rgba(204, 0, 0, 0.05);
+        }
+
+        .nav-link.active {
+            color: white;
+            background-color: #990000;
+        }
+
+        /* Main Container */
+        .container {
+            display: flex;
+            height: 100vh;
+            padding-top: 80px;
+        }
+
+        /* Controls */
+        .controls {
+            width: 300px;
+            background: white;
+            padding: 24px;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+
+        .control-section {
+            margin-bottom: 28px;
+        }
+
+        .control-section h3 {
+            margin: 0 0 16px 0;
+            color: #1a1a1a;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        #year-select {
+            width: 100%;
+            padding: 10px;
+            border: 1.5px solid #e0e0e0;
+            border-radius: 6px;
+            margin-bottom: 12px;
+            font-size: 14px;
+            appearance: none;
+            background: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23404040'><path d='M7 10l5 5 5-5z'/></svg>") no-repeat;
+            background-position: right 10px center;
+            background-size: 20px;
+            background-color: white;
+        }
+
+        #go-button {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(45deg, #990000 0%, #cc0000 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(204, 0, 0, 0.2);
+        }
+
+        #go-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(204, 0, 0, 0.3);
+        }
+
+        .crime-filter-container {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .crime-filter-label {
+            display: flex;
+            align-items: center;
+            padding: 10px 12px;
+            background: #f8fafc;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1.5px solid transparent;
+        }
+
+        .crime-filter-label:hover {
+            background: #f1f5f9;
+            border-color: #e2e8f0;
+        }
+
+        .crime-filter {
+            margin-right: 10px;
+            width: 16px;
+            height: 16px;
+            accent-color: #cc0000;
+        }
+
+        /* Map Container */
+        #map {
+            flex: 1;
+            height: 100%;
+        }
+
+        /* Custom Marker */
+        .custom-marker {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.9);
+            box-shadow: 
+                0 2px 4px rgba(0, 0, 0, 0.2),
+                0 0 8px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        /* Loading Indicator */
+        #loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            display: none;
+            z-index: 1000;
+            font-weight: 500;
+            color: #1a1a1a;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+
+        /* Popup Styling */
+        .popup-content {
+            padding: 16px;
+            min-width: 200px;
+        }
+
+        .popup-title {
+            font-weight: 600;
+            font-size: 15px;
+            color: #1a1a1a;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .popup-detail {
+            margin-bottom: 6px;
+            font-size: 13px;
+            color: #4b5563;
+            line-height: 1.4;
+        }
+
+        .popup-detail strong {
+            color: #1a1a1a;
+            font-weight: 500;
+        }
+
+/* Cluster Styles with Light Red Ring */
+.marker-cluster {
+    border-radius: 50%;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backface-visibility: hidden;
+    transform: translateZ(0);
+    will-change: transform;
+    box-shadow: 0 0 0 4px rgba(255, 100, 100, 0.4); /* Light red ring */
+}
+
+.marker-cluster-small {
+    background-color: rgba(255, 80, 80, 0.8);
+    box-shadow: 0 0 0 4px rgba(255, 150, 150, 0.4);
+}
+
+.marker-cluster-medium {
+    background-color: rgba(255, 0, 0, 0.8);
+    box-shadow: 0 0 0 4px rgba(255, 100, 100, 0.4);
+}
+
+.marker-cluster-large {
+    background-color: rgba(180, 0, 0, 0.8);
+    box-shadow: 0 0 0 4px rgba(255, 50, 50, 0.4);
+}
+
+.marker-cluster div {
+    margin: 0;
+    width: 100% !important;
+    height: 100% !important;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 300;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.marker-cluster:hover {
+    transform: scale(1.1);
+}
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">
+                <img src="logo.png" alt="RogueHunter Logo" class="logo-image">
+                RogueHunter
+            </a>
+            <div class="nav-links">
+                <a href="index.html" class="nav-link">Home</a>
+                <a href="crime_map.html" class="nav-link active">Map View</a>
+                <a href="#" class="nav-link">Forecasted Trends</a>
+                <a href="#" class="nav-link">Crime Prediction</a>
+                <a href="#" class="nav-link">Analytics</a>
+                <a href="#" class="nav-link">Generate Reports</a>
+                <a href="#" class="nav-link">About</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="controls">
+            <div class="control-section">
+                <h3>Year</h3>
+                <select id="year-select">
+                    <option value="">All Years</option>
+                    <option value="2024">2024</option>
+                    <option value="2023">2023</option>
+                    <option value="2022">2022</option>
+                    <option value="2021">2021</option>
+                    <option value="2020">2020</option>
+                </select>
+                <button id="go-button">Apply Filters</button>
+            </div>
+            
+            <div class="control-section">
+                <h3>Crime Types</h3>
+                <div class="crime-filter-container">
+                    {% for crime_type in crime_types %}
+                    <label class="crime-filter-label">
+                        <input type="checkbox" value="{{ crime_type }}" class="crime-filter"> 
+                        {{ crime_type }}
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        <div id="map"></div>
+        <div id="loading">Loading crimes...</div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.4.1/leaflet.markercluster.js"></script>
+    <script>
+        let map;
+        let markerGroups = {};
+
+        // Initialize map immediately
+        map = L.map('map').setView([41.8781, -87.6298], 11);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        function showLoading() {
+            document.getElementById('loading').style.display = 'block';
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        const crimeColors = {
+            'THEFT': '#ef4444',
+            'BATTERY': '#f97316',
+            'CRIMINAL DAMAGE': '#eab308',
+            'ASSAULT': '#a855f7',
+            'NARCOTICS': '#06b6d4',
+            'BURGLARY': '#22c55e',
+            'ROBBERY': '#ec4899',
+            'DECEPTIVE PRACTICE': '#0ea5e9',
+            'OTHER OFFENSE': '#be185d'
+        };
+
+        function getCrimeColor(crimeType) {
+            return crimeColors[crimeType] || '#3b82f6';
+        }
+
+        function createCustomIcon(crimeType) {
+            const color = getCrimeColor(crimeType);
+            return L.divIcon({
+                html: `<div class="custom-marker" style="background-color: ${color};"></div>`,
+                className: '',
+                iconSize: [16, 16],
+                iconAnchor: [8, 8]
+            });
+        }
+
+        function formatPopup(crime) {
+            return `
+                <div class="popup-content">
+                    <div class="popup-title">${crime.type}</div>
+                    <div class="popup-detail"><strong>Date:</strong> ${crime.date}</div>
+                    <div class="popup-detail"><strong>Location:</strong> ${crime.block}</div>
+                    <div class="popup-detail"><strong>Details:</strong> ${crime.description || 'Not provided'}</div>
+                    <div class="popup-detail"><strong>Arrest Made:</strong> ${crime.arrest}</div>
+                </div>
+            `;
+        }
+
+        async function fetchAndDisplayCrimes(crimeType, year) {
+            showLoading();
+            try {
+                if (markerGroups[crimeType]) {
+                    map.removeLayer(markerGroups[crimeType]);
+                }
+
+                const url = new URL('/api/getCrimeData', window.location.origin);
+                url.searchParams.append('type', crimeType);
+                if (year) {
+                    url.searchParams.append('year', year);
+                }
+
+                const response = await fetch(url);
+                const crimes = await response.json();
+
+                if (!crimes || !Array.isArray(crimes)) {
+                    console.error('Error fetching crimes: Invalid response');
+                    return;
+                }
+
+                const cluster = L.markerClusterGroup({
+                    chunkedLoading: true,
+                    maxClusterRadius: 60,
+                    spiderfyOnMaxZoom: true,
+                    showCoverageOnHover: false,
+                    zoomToBoundsOnClick: true,
+                    disableClusteringAtZoom: 19,
+                    removeOutsideVisibleBounds: true,
+                    iconCreateFunction: function(cluster) {
+                        const count = cluster.getChildCount();
+                        let size, className;
+                        
+                        if (count < 30) {
+                            size = 40;
+                            className = 'marker-cluster marker-cluster-small';
+                        } else if (count < 100) {
+                            size = 44;
+                            className = 'marker-cluster marker-cluster-medium';
+                        } else {
+                            size = 48;
+                            className = 'marker-cluster marker-cluster-large';
+                        }
+                        
+                        return new L.DivIcon({
+                            html: `<div>${count}</div>`,
+                            className: className,
+                            iconSize: new L.Point(size, size),
+                            iconAnchor: new L.Point(size/2, size/2)
+                        });
+                    }
+                });
+
+                markerGroups[crimeType] = cluster;
+
+                crimes.forEach(crime => {
+                    if (crime.lat && crime.lng) {
+                        const marker = L.marker([crime.lat, crime.lng], {
+                            icon: createCustomIcon(crime.type)
+                        });
+                        marker.bindPopup(formatPopup(crime));
+                        cluster.addLayer(marker);
+                    }
+                });
+
+                map.addLayer(cluster);
+
+                if (cluster.getLayers().length > 0) {
+                    map.fitBounds(cluster.getBounds());
+                }
+            } catch (error) {
+                console.error('Error fetching crimes:', error);
+                if(!markerGroups[crimeType]) {
+                    alert('')
+                }
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Event Listeners
+        document.querySelector('#go-button').addEventListener('click', function() {
+            const year = document.getElementById('year-select').value;
+            const checkedBoxes = document.querySelectorAll('.crime-filter:checked');
+            
+            if (checkedBoxes.length === 0) {
+                alert('Please select at least one crime type.');
+                return;
+            }
+
+            checkedBoxes.forEach(checkbox => {
+                fetchAndDisplayCrimes(checkbox.value, year);
+            });
+        });
+
+        document.querySelectorAll('.crime-filter').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const crimeType = this.value;
+                const year = document.getElementById('year-select').value;
+                
+                if (this.checked) {
+                    fetchAndDisplayCrimes(crimeType, year);
+                } else if (markerGroups[crimeType]) {
+                    map.removeLayer(markerGroups[crimeType]);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
