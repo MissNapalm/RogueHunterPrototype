@@ -75,7 +75,7 @@
 
         .nav-link.active {
             color: white;
-            background-color: rgb(180, 0, 0);
+            background-color: #cc0000
         }
 
         .nav-link.active:hover {
@@ -188,17 +188,6 @@
             height: 100%;
         }
 
-        /* Custom Marker */
-        .custom-marker {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            border: 2px solid rgba(255, 255, 255, 0.9);
-            box-shadow: 
-                0 2px 4px rgba(0, 0, 0, 0.2),
-                0 0 8px rgba(0, 0, 0, 0.1);
-            transition: all 0.3s ease;
-        }
 
         /* Loading Indicator */
         #loading {
@@ -405,12 +394,11 @@
         }
 
         function createCustomIcon(crimeType) {
-            const color = getCrimeColor(crimeType);
-            return L.divIcon({
-                html: `<div class="custom-marker" style="background-color: ${color};"></div>`,
-                className: '',
-                iconSize: [16, 16],
-                iconAnchor: [8, 8]
+            return L.icon({
+                iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
+                shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+                iconAnchor: [12, 41],
+                popupAnchor: [1, -41],
             });
         }
 
