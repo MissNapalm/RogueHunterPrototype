@@ -394,14 +394,48 @@
         }
 
         function createCustomIcon(crimeType) {
-            return L.icon({
-                iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
-                shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
-                iconAnchor: [12, 41],
+            // check if crime type is SA
+            if (crimeType === 'CRIMINAL SEXUAL ASSAULT') {
+                return L.icon({
+                    iconUrl: "{{ url_for('static', filename='sa.png') }}",
+                    iconSize: [32, 32],
+                    iconAnchor: [16, 16],
+                    popupAnchor: [1, -41],
+                    shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+                });
+            } else if (crimeType === 'ARSON') {
+                return L.icon({
+                iconUrl: "{{ url_for('static', filename='arson.png') }}",
+                iconSize: [32, 32],
+                iconAnchor: [16, 16],
                 popupAnchor: [1, -41],
+                shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
             });
+        } else if (crimeType === 'ARSON') {
+                return L.icon({
+                iconUrl: "{{ url_for('static', filename='arson.png') }}",
+                iconSize: [32, 32],
+                iconAnchor: [16, 16],
+                popupAnchor: [1, -41],
+                shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+            });
+        } else if (crimeType === 'BURGLARY') {
+                return L.icon({
+                iconUrl: "{{ url_for('static', filename='burglary.png') }}",
+                iconSize: [32, 32],
+                iconAnchor: [16, 16],
+                popupAnchor: [1, -41],
+                shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+            });
+            } else {
+                return L.icon({
+                    iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
+                    shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+                    iconAnchor: [12, 41],
+                    popupAnchor: [1, -41],
+                });
+            }
         }
-
         function formatPopup(crime) {
             return `
                 <div class="popup-content">
@@ -447,10 +481,10 @@
                         const count = cluster.getChildCount();
                         let size, className;
                         
-                        if (count < 30) {
-                            size = 30;
+                        if (count < 13) {
+                            size = 28;
                             className = 'marker-cluster marker-cluster-small';
-                        } else if (count < 100) {
+                        } else if (count < 70) {
                             size = 33;
                             className = 'marker-cluster marker-cluster-medium';
                         } else {
