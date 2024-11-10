@@ -361,13 +361,48 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.4.1/leaflet.markercluster.js"></script>
     <script>
         let map;
-        let markerGroups = {};
+        let masterClusterGroup = L.markerClusterGroup({
+    chunkedLoading: true,
+    maxClusterRadius: 60,
+    spiderfyOnMaxZoom: true,
+    showCoverageOnHover: false,
+    zoomToBoundsOnClick: true,
+    disableClusteringAtZoom: 19,
+    removeOutsideVisibleBounds: true,
+    iconCreateFunction: function (cluster) {
+        const count = cluster.getChildCount();
+        let size, className;
 
+        if (count < 13) {
+            size = 28;
+            className = 'marker-cluster marker-cluster-small';
+        } else if (count < 70) {
+            size = 33;
+            className = 'marker-cluster marker-cluster-medium';
+        } else {
+            size = 36;
+            className = 'marker-cluster marker-cluster-large';
+        }
+
+        return new L.DivIcon({
+            html: `<div class="marker-outer"><div class="marker-inner">${count}</div></div>`,
+            className: className,
+            iconSize: new L.Point(size, size),
+            iconAnchor: new L.Point(size / 2, size / 2)
+        });
+    }
+});
+
+        let markerGroups = {};
         // Initialize map immediately
         map = L.map('map').setView([41.8781, -87.6298], 11);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors'
         }).addTo(map);
+        
+        map.addLayer(masterClusterGroup);
+
+        
 
         function showLoading() {
             document.getElementById('loading').style.display = 'block';
@@ -447,114 +482,81 @@
                 </div>
             `;
         }
+        async function fetchAndDisplayCrimes(crimeTypes, year) {
+    showLoading();
+    try {
+        // Clear all existing markers
+        masterClusterGroup.clearLayers();
 
-        async function fetchAndDisplayCrimes(crimeType, year) {
-            showLoading();
-            try {
-                if (markerGroups[crimeType]) {
-                    map.removeLayer(markerGroups[crimeType]);
-                }
-
-                const url = new URL('/api/getCrimeData', window.location.origin);
-                url.searchParams.append('type', crimeType);
-                if (year) {
-                    url.searchParams.append('year', year);
-                }
-
-                const response = await fetch(url);
-                const crimes = await response.json();
-
-                if (!crimes || !Array.isArray(crimes)) {
-                    console.error('Error fetching crimes: Invalid response');
-                    return;
-                }
-
-                const cluster = L.markerClusterGroup({
-                    chunkedLoading: true,
-                    maxClusterRadius: 60,
-                    spiderfyOnMaxZoom: true,
-                    showCoverageOnHover: false,
-                    zoomToBoundsOnClick: true,
-                    disableClusteringAtZoom: 19,
-                    removeOutsideVisibleBounds: true,
-                    iconCreateFunction: function(cluster) {
-                        const count = cluster.getChildCount();
-                        let size, className;
-                        
-                        if (count < 13) {
-                            size = 28;
-                            className = 'marker-cluster marker-cluster-small';
-                        } else if (count < 70) {
-                            size = 33;
-                            className = 'marker-cluster marker-cluster-medium';
-                        } else {
-                            size = 36;
-                            className = 'marker-cluster marker-cluster-large';
-                        }
-                        
-                        return new L.DivIcon({
-                            html: `<div class="marker-outer"><div class="marker-inner">${count}</div></div>`,
-                            className: className,
-                            iconSize: new L.Point(size, size),
-                            iconAnchor: new L.Point(size/2, size/2)
-                        });
-                    }
-                });
-
-                markerGroups[crimeType] = cluster;
-
-                crimes.forEach(crime => {
-                    if (crime.lat && crime.lng) {
-                        const marker = L.marker([crime.lat, crime.lng], {
-                            icon: createCustomIcon(crime.type)
-                        });
-                        marker.bindPopup(formatPopup(crime));
-                        cluster.addLayer(marker);
-                    }
-                });
-
-                map.addLayer(cluster);
-
-                if (cluster.getLayers().length > 0) {
-                    map.fitBounds(cluster.getBounds());
-                }
-            } catch (error) {
-                console.error('Error fetching crimes:', error);
-                if(!markerGroups[crimeType]) {
-                    alert('')
-                }
-            } finally {
-                hideLoading();
+        // Fetch data for all selected crime types
+        for (const crimeType of crimeTypes) {
+            const url = new URL('/api/getCrimeData', window.location.origin);
+            url.searchParams.append('type', crimeType);
+            if (year) {
+                url.searchParams.append('year', year);
             }
+
+            const response = await fetch(url);
+            const crimes = await response.json();
+
+            if (!crimes || !Array.isArray(crimes)) {
+                console.error('Error fetching crimes: Invalid response');
+                continue;
+            }
+
+            // Add markers for this crime type to the master cluster group
+            crimes.forEach(crime => {
+                if (crime.lat && crime.lng) {
+                    const marker = L.marker([crime.lat, crime.lng], {
+                        icon: createCustomIcon(crime.type)
+                    });
+                    marker.bindPopup(formatPopup(crime));
+                    masterClusterGroup.addLayer(marker);
+                }
+            });
         }
 
-        // Event Listeners
-        document.querySelector('#go-button').addEventListener('click', function() {
-            const year = document.getElementById('year-select').value;
-            const checkedBoxes = document.querySelectorAll('.crime-filter:checked');
-            
-            if (checkedBoxes.length === 0) {
-                alert('Please select at least one crime type.');
-                return;
-            }
+        // Fit bounds if we have markers
+        if (masterClusterGroup.getLayers().length > 0) {
+            map.fitBounds(masterClusterGroup.getBounds());
+        }
 
-            checkedBoxes.forEach(checkbox => {
-                fetchAndDisplayCrimes(checkbox.value, year);
-            });
-        });
+    } catch (error) {
+        console.error('Error fetching crimes:', error);
+    } finally {
+        hideLoading();
+    }
+}
 
-        document.querySelectorAll('.crime-filter').forEach(checkbox => {
-            checkbox.addEventListener('change', function() {
-                const crimeType = this.value;
-                const year = document.getElementById('year-select').value;
-                
-                if (this.checked) {
-                    fetchAndDisplayCrimes(crimeType, year);
-                } else if (markerGroups[crimeType]) {
-                    map.removeLayer(markerGroups[crimeType]);
-                }
-            });
-        });
+
+
+// Event Listeners
+document.querySelector('#go-button').addEventListener('click', function() {
+    const year = document.getElementById('year-select').value;
+    const checkedBoxes = document.querySelectorAll('.crime-filter:checked');
+    
+    if (checkedBoxes.length === 0) {
+        alert('Please select at least one crime type.');
+        return;
+    }
+
+    const selectedCrimeTypes = Array.from(checkedBoxes).map(checkbox => checkbox.value);
+    fetchAndDisplayCrimes(selectedCrimeTypes, year);
+});
+
+document.querySelectorAll('.crime-filter').forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+        const year = document.getElementById('year-select').value;
+        const checkedBoxes = document.querySelectorAll('.crime-filter:checked');
+        const selectedCrimeTypes = Array.from(checkedBoxes).map(checkbox => checkbox.value);
+        
+        if (selectedCrimeTypes.length > 0) {
+            fetchAndDisplayCrimes(selectedCrimeTypes, year);
+        } else {
+            masterClusterGroup.clearLayers();
+        }
+    });
+});
     </script>
 </body>
 </html>
